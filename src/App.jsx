@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Activity, BookOpen, Boxes, Braces, CheckSquare, ChevronDown, CircleHelp,
+  Activity, ArrowLeft, BookOpen, Boxes, Braces, CheckSquare, ChevronDown, CircleHelp,
   Code2, ExternalLink, FileUp, Frame, Globe2, Home, Layers, MousePointer2,
   Search, Settings2, Table2, Terminal, WandSparkles
 } from "lucide-react";
@@ -96,8 +96,14 @@ const examples = {
   }
 };
 
+function getModuleFromPath(pathname) {
+  const match = pathname.match(/^\/practice\/([^/]+)\/?$/);
+  const requestedId = match?.[1];
+  return modules.some(module => module.id === requestedId) ? requestedId : "overview";
+}
+
 function App() {
-  const [active, setActive] = useState("overview");
+  const [active, setActive] = useState(() => getModuleFromPath(window.location.pathname));
   const [language, setLanguage] = useState("playwright");
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
@@ -119,6 +125,21 @@ function App() {
   const [tableSearch, setTableSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
   const [shadowClicked, setShadowClicked] = useState(false);
+
+  useEffect(() => {
+    const handlePopState = () => setActive(getModuleFromPath(window.location.pathname));
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const navigateTo = (moduleId) => {
+    const nextPath = moduleId === "overview" ? "/" : `/practice/${moduleId}`;
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({ moduleId }, "", nextPath);
+    }
+    setActive(moduleId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const filteredModules = modules.filter(m => m.label.toLowerCase().includes(search.toLowerCase()));
   const current = examples[active];
@@ -179,7 +200,7 @@ function App() {
       </div>;
       case "frames": return <div className="field full"><label htmlFor="practiceFrame">Embedded practice iframe</label><iframe id="practiceFrame" title="Practice iframe" className="practice-frame" srcDoc={`<!doctype html><html><body style="font:15px Arial;padding:20px;background:#f4f7fb;color:#182235"><h3>Inside the iframe</h3><p>Switch into this frame to interact with its button.</p><button id="frameMessage" onclick="document.getElementById('frameStatus').textContent='You interacted with the iframe'" style="padding:10px 14px;background:#315ee8;color:white;border:0;border-radius:6px">Click inside frame</button><p id="frameStatus">Waiting for interaction</p></body></html>`} /></div>;
       case "links": return <div className="practice-grid">
-        <div className="demo-tile"><span className="label">Internal link</span><a id="internalLink" href="#overview" onClick={e=>{e.preventDefault();setActive("overview");}}>Go to overview</a><small>Navigates within this practice app</small></div>
+        <div className="demo-tile"><span className="label">Internal link</span><a id="internalLink" href="#overview" onClick={e=>{e.preventDefault();navigateTo("overview");}}>Go to overview</a><small>Navigates within this practice app</small></div>
         <div className="demo-tile"><span className="label">External link</span><a id="docsLink" href="https://example.com" target="_blank" rel="noreferrer">Visit example.com ↗</a><small>Opens an external website</small></div>
         <div className="demo-tile"><span className="label">Link attributes</span><code>id="docsLink"</code><code>target="_blank"</code><code>rel="noreferrer"</code></div>
       </div>;
@@ -204,7 +225,7 @@ function App() {
       <div className="brand"><div className="brand-mark"><Terminal size={21}/></div><div><strong>Automation Lab</strong><span>TESTING PLAYGROUND</span></div></div>
       <div className="sidebar-search"><Search size={15}/><input aria-label="Search modules" placeholder="Find a module..." value={search} onChange={e=>setSearch(e.target.value)}/><kbd>/</kbd></div>
       <nav className="nav-list">
-        {["START HERE","FORM ELEMENTS","MOUSE ACTIONS","BROWSER","DATA & DYNAMIC","ADVANCED"].map(group=><div className="nav-group" key={group}><div className="nav-heading">{group}</div>{filteredModules.filter(m=>m.group===group).map(m=>{const Icon=m.icon;return <button key={m.id} className={`nav-item ${active===m.id?"active":""}`} onClick={()=>setActive(m.id)}><Icon size={16}/><span>{m.label}</span>{active===m.id&&<span className="active-dot"/>}</button>})}</div>)}
+        {["START HERE","FORM ELEMENTS","MOUSE ACTIONS","BROWSER","DATA & DYNAMIC","ADVANCED"].map(group=><div className="nav-group" key={group}><div className="nav-heading">{group}</div>{filteredModules.filter(m=>m.group===group).map(m=>{const Icon=m.icon;return <button key={m.id} className={`nav-item ${active===m.id?"active":""}`} onClick={()=>navigateTo(m.id)}><Icon size={16}/><span>{m.label}</span>{active===m.id&&<span className="active-dot"/>}</button>})}</div>)}
       </nav>
       <div className="sidebar-bottom"><div className="learning-card"><div className="learning-icon"><BookOpen size={16}/></div><strong>Keep learning</strong><p>Practice one element every day to build your automation skills.</p><span>COURSES COMING SOON</span></div><div className="profile"><div className="avatar">AL</div><div><strong>Automation Lab</strong><span>Learning edition</span></div><Settings2 size={16}/></div></div>
     </aside>
@@ -213,13 +234,13 @@ function App() {
       <header className="topbar"><div className="breadcrumb">Playground <span>/</span> {modules.find(m=>m.id===active)?.label || "Overview"}</div><div className="top-actions"><span className="status-pill"><i/> Playground active</span><a href="https://playwright.dev/docs/intro" target="_blank" rel="noreferrer">Playwright docs <ExternalLink size={13}/></a></div></header>
       <div className="content">
         {active==="overview" ? <>
-          <div className="hero"><div className="hero-copy"><div className="eyebrow"><span/> HANDS-ON AUTOMATION LEARNING</div><h1>Welcome to your<br/><em>Automation Lab.</em></h1><p>A practical playground to explore web elements, practise browser interactions and build confidence with Selenium and Playwright.</p><div className="hero-actions"><button className="primary" onClick={()=>setActive("inputs")}>Start practising <span>→</span></button><button className="ghost" onClick={()=>setActive("dynamic")}><CircleHelp size={16}/> Explore challenges</button></div></div><div className="hero-art"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="code-window"><div className="window-bar"><i/><i/><i/><span>test.spec.js</span></div><div className="code-lines"><p><b>01</b> <span className="pink">test</span>(<span className="green">'first test'</span>, async ({`{ page }`}) =&gt; {'{'}</p><p><b>02</b> &nbsp; <span className="blue">await</span> page.goto(<span className="green">'/playground'</span>);</p><p><b>03</b> &nbsp; <span className="blue">await</span> page.locator(<span className="green">'#submit'</span>).click();</p><p><b>04</b> {'}'});</p><p className="code-success">✓ Test passed</p></div></div><div className="floating-chip chip-top"><span>⌘</span> Browser automation</div><div className="floating-chip chip-bottom"><span>✓</span> Learn by doing</div></div></div>
+          <div className="hero"><div className="hero-copy"><div className="eyebrow"><span/> HANDS-ON AUTOMATION LEARNING</div><h1>Welcome to your<br/><em>Automation Lab.</em></h1><p>A practical playground to explore web elements, practise browser interactions and build confidence with Selenium and Playwright.</p><div className="hero-actions"><button className="primary" onClick={()=>navigateTo("inputs")}>Start practising <span>→</span></button><button className="ghost" onClick={()=>navigateTo("dynamic")}><CircleHelp size={16}/> Explore challenges</button></div></div><div className="hero-art"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="code-window"><div className="window-bar"><i/><i/><i/><span>test.spec.js</span></div><div className="code-lines"><p><b>01</b> <span className="pink">test</span>(<span className="green">'first test'</span>, async ({`{ page }`}) =&gt; {'{'}</p><p><b>02</b> &nbsp; <span className="blue">await</span> page.goto(<span className="green">'/playground'</span>);</p><p><b>03</b> &nbsp; <span className="blue">await</span> page.locator(<span className="green">'#submit'</span>).click();</p><p><b>04</b> {'}'});</p><p className="code-success">✓ Test passed</p></div></div><div className="floating-chip chip-top"><span>⌘</span> Browser automation</div><div className="floating-chip chip-bottom"><span>✓</span> Learn by doing</div></div></div>
           <div className="stats-row"><div className="stat-card"><span className="stat-icon purple"><Boxes size={18}/></span><div><strong>13</strong><span>Practice modules</span></div></div><div className="stat-card"><span className="stat-icon blue"><Code2 size={18}/></span><div><strong>2</strong><span>Automation languages</span></div></div><div className="stat-card"><span className="stat-icon green"><Activity size={18}/></span><div><strong>30+</strong><span>Hands-on interactions</span></div></div><div className="stat-card"><span className="stat-icon orange"><BookOpen size={18}/></span><div><strong>Free</strong><span>Practice environment</span></div></div></div>
           <div className="section-head"><div><div className="eyebrow">YOUR LEARNING SPACE</div><h2>Explore practice modules</h2><p>Choose an element and start experimenting.</p></div><span className="module-count">13 MODULES</span></div>
-          <div className="module-grid">{modules.filter(m=>m.id!=="overview").map((m,i)=>{const Icon=m.icon;return <button className="module-card" key={m.id} onClick={()=>setActive(m.id)}><div className={`module-icon tone-${i%5}`}><Icon size={19}/></div><div className="module-title">{m.label}<span>↗</span></div><p>{examples[m.id].description}</p><div className="module-footer"><span>OPEN PRACTICE</span><span>→</span></div></button>})}</div>
-          <div className="bottom-banner"><div className="banner-icon"><Braces size={22}/></div><div><strong>Learn both. Practise anywhere.</strong><p>Switch between Selenium Java and Playwright JavaScript examples inside each module.</p></div><button className="secondary" onClick={()=>setActive("inputs")}>View code examples</button></div>
+          <div className="module-grid">{modules.filter(m=>m.id!=="overview").map((m,i)=>{const Icon=m.icon;return <button className="module-card" key={m.id} onClick={()=>navigateTo(m.id)}><div className={`module-icon tone-${i%5}`}><Icon size={19}/></div><div className="module-title">{m.label}<span>↗</span></div><p>{examples[m.id].description}</p><div className="module-footer"><span>OPEN PRACTICE</span><span>→</span></div></button>})}</div>
+          <div className="bottom-banner"><div className="banner-icon"><Braces size={22}/></div><div><strong>Learn both. Practise anywhere.</strong><p>Switch between Selenium Java and Playwright JavaScript examples inside each module.</p></div><button className="secondary" onClick={()=>navigateTo("inputs")}>View code examples</button></div>
         </> : <div className="practice-page">
-          <div className="page-heading"><div><div className="eyebrow">PRACTICE MODULE</div><h1>{current?.title}</h1><p>{current?.description}</p></div><span className="module-tag">INTERACTIVE EXERCISE</span></div>
+          <div className="page-heading"><div><button className="page-back" onClick={()=>navigateTo("overview")}><ArrowLeft size={14}/> Back to Overview</button><div className="eyebrow">PRACTICE MODULE</div><h1>{current?.title}</h1><p>{current?.description}</p></div><span className="module-tag">INTERACTIVE EXERCISE</span></div>
           <div className="practice-layout"><section className="panel practice-panel"><div className="panel-heading"><div><span className="panel-kicker">LIVE PLAYGROUND</span><h2>Try it yourself</h2></div><span className="live-dot">LIVE</span></div><div className="practice-content">{renderPractice()}</div></section>
           <section className="panel code-panel"><div className="panel-heading"><div><span className="panel-kicker">AUTOMATION EXAMPLE</span><h2>Write your test</h2></div><span className="code-icon"><Code2 size={17}/></span></div><div className="language-tabs"><button className={language==="playwright"?"selected":""} onClick={()=>setLanguage("playwright")}>Playwright JS</button><button className={language==="selenium"?"selected":""} onClick={()=>setLanguage("selenium")}>Selenium Java</button></div><div className="code-block"><div className="code-toolbar"><span><i/> {language==="playwright"?"JavaScript":"Java"}</span><button onClick={copyCode}>Copy code</button></div><pre><code>{code}</code></pre></div><div className="code-note"><CircleHelp size={15}/><span>These are starter examples. Add imports, driver setup and your actual deployed playground URL before running them.</span></div></section></div>
           <div className="challenge-panel"><div className="challenge-symbol">✦</div><div><strong>Challenge yourself</strong><p>Can you write the automation script without looking at the example? Try it first, then compare your solution.</p></div><span className="challenge-level">BEGINNER FRIENDLY</span></div>
